@@ -18,7 +18,7 @@ package ml.dmlc.xgboost4j.scala.spark
 
 import scala.collection.mutable
 import ml.dmlc.xgboost4j.scala.Booster
-import org.apache.spark.ml.linalg.{DenseVector => MLDenseVector, Vector => MLVector}
+import org.apache.spark.mllib.linalg.{DenseVector => MLDenseVector, Vector => MLVector}
 import org.apache.spark.ml.param.{BooleanParam, DoubleArrayParam, Param, ParamMap}
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.sql.functions._
@@ -77,10 +77,10 @@ class XGBoostClassificationModel private[spark](
       testSet: Dataset[_],
       temporalColName: Option[String] = None,
       forceTransformedScore: Option[Boolean] = None): DataFrame = {
-    val predictRDD = produceRowRDD(testSet, forceTransformedScore.getOrElse($(outputMargin)))
+    val predictRDD = produceRowRDD(testSet.toDF, forceTransformedScore.getOrElse($(outputMargin)))
     val colName = temporalColName.getOrElse($(rawPredictionCol))
     val tempColName = colName + "_arraytype"
-    val dsWithArrayTypedRawPredCol = testSet.sparkSession.createDataFrame(predictRDD, schema = {
+    val dsWithArrayTypedRawPredCol = testSet.sqlContext.createDataFrame(predictRDD, schema = {
       testSet.schema.add(tempColName, ArrayType(FloatType, containsNull = false))
     })
     val transformerForProbabilitiesArray =
@@ -96,11 +96,11 @@ class XGBoostClassificationModel private[spark](
       drop(tempColName)
   }
 
-  private def fromFeatureToPrediction(testSet: Dataset[_]): Dataset[_] = {
+  private def fromFeatureToPrediction(testSet: Dataset[_]): DataFrame = {
     val rawPredictionDF = predictRaw(testSet, Some("rawPredictionCol"))
     val predictionUDF = udf(raw2prediction _).apply(col("rawPredictionCol"))
     val tempDF = rawPredictionDF.withColumn($(predictionCol), predictionUDF)
-    val allColumnNames = testSet.columns ++ Seq($(predictionCol))
+    val allColumnNames = testSet.toDF.columns ++ Seq($(predictionCol))
     tempDF.select(allColumnNames(0), allColumnNames.tail: _*)
   }
 
@@ -139,7 +139,7 @@ class XGBoostClassificationModel private[spark](
     if ($(outputMargin)) {
       setRawPredictionCol("margin")
     }
-    var outputData = testSet
+    var outputData = testSet.toDF()
     var numColsOutput = 0
     if ($(rawPredictionCol).nonEmpty) {
       outputData = predictRaw(testSet)

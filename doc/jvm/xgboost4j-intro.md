@@ -127,7 +127,7 @@ The next step is to evaluate the model, you can either predict in local side or 
 val testSet = MLUtils.loadLibSVMFile(sc, inputTestPath)
 
 // local prediction
-// import methods in DataUtils to convert Iterator[org.apache.spark.mllib.regression.LabeledPoint]
+// import methods in DataUtils to convert Iterator[.mllib.regression.LabeledPoint]
 // to Iterator[ml.dmlc.xgboost4j.LabeledPoint] in automatic
 import DataUtils._
 xgboostModel.predict(new DMatrix(testSet.collect().iterator)

@@ -29,9 +29,9 @@ import org.apache.commons.io.FileUtils
 import org.apache.commons.logging.LogFactory
 import org.apache.hadoop.fs.{FSDataInputStream, Path}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.Dataset
-import org.apache.spark.ml.feature.{LabeledPoint => MLLabeledPoint}
-import org.apache.spark.{SparkContext, SparkParallelismTracker, TaskContext}
+import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.mllib.regression.{LabeledPoint => MLLabeledPoint}
+import org.apache.spark.{SparkContext, TaskContext}
 
 
 /**
@@ -168,7 +168,7 @@ object XGBoost extends Serializable {
    */
   @throws(classOf[XGBoostError])
   def trainWithDataFrame(
-      trainingData: Dataset[_],
+      trainingData: DataFrame,
       params: Map[String, Any],
       round: Int,
       nWorkers: Int,
@@ -190,7 +190,7 @@ object XGBoost extends Serializable {
       set(estimator.missing, missing).
       setFeaturesCol(featureCol).
       setLabelCol(labelCol).
-      fit(trainingData)
+      train(trainingData)
   }
 
   private[spark] def isClassificationTask(params: Map[String, Any]): Boolean = {
@@ -337,7 +337,6 @@ object XGBoost extends Serializable {
       checkpointRound: Int =>
         val tracker = startTracker(nWorkers, trackerConf)
         try {
-          val parallelismTracker = new SparkParallelismTracker(sc, timeoutRequestWorkers, nWorkers)
           val overriddenParams = overrideParamsAccordingToTaskCPUs(params, sc)
           val boostersAndMetrics = buildDistributedBoosters(partitionedData, overriddenParams,
             tracker.getWorkerEnvs, checkpointRound, obj, eval, useExternalMemory, missing,
@@ -351,7 +350,7 @@ object XGBoost extends Serializable {
           sparkJobThread.setUncaughtExceptionHandler(tracker)
           sparkJobThread.start()
           val isClsTask = isClassificationTask(params)
-          val trackerReturnVal = parallelismTracker.execute(tracker.waitFor(0L))
+          val trackerReturnVal = tracker.waitFor(0L)
           logger.info(s"Rabit returns with exit code $trackerReturnVal")
           val model = postTrackerReturnProcessing(trackerReturnVal, boostersAndMetrics,
             sparkJobThread, isClsTask)

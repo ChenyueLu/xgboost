@@ -20,13 +20,13 @@ package ml.dmlc.xgboost4j.scala.example.spark
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
-
-import ml.dmlc.xgboost4j.scala.spark.{XGBoostEstimator, XGBoost}
+import ml.dmlc.xgboost4j.scala.spark.{XGBoost, XGBoostEstimator}
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.evaluation.RegressionEvaluator
-import org.apache.spark.ml.feature.{VectorAssembler, StringIndexer}
+import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler}
 import org.apache.spark.ml.tuning._
-import org.apache.spark.sql.{Dataset, DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, SQLContext}
 
 case class SalesRecord(storeId: Int, daysOfWeek: Int, date: String, sales: Int, customers: Int,
                        open: Int, promo: Int, stateHoliday: String, schoolHoliday: String)
@@ -103,7 +103,7 @@ object SparkModelTuningTool {
 
   private def featureEngineering(ds: DataFrame): DataFrame = {
     import org.apache.spark.sql.functions._
-    import ds.sparkSession.implicits._
+    import ds.sqlContext.implicits._
     val stateHolidayIndexer = new StringIndexer()
       .setInputCol("stateHoliday")
       .setOutputCol("stateHolidayIndex")
@@ -151,15 +151,17 @@ object SparkModelTuningTool {
       Array(stateHolidayIndexer, schoolHolidayIndexer, storeTypeIndexer, assortmentIndexer,
         promoInterval, vectorAssembler))
 
-    pipeline.fit(finalDS).transform(finalDS).
-      drop("stateHoliday", "schoolHoliday", "storeType", "assortment", "promoInterval", "sales",
-        "promo2SinceWeek", "customers", "promoInterval", "competitionOpenSinceYear",
-        "competitionOpenSinceMonth", "promo2SinceYear", "competitionDistance", "date")
+    pipeline.fit(finalDS).transform(finalDS)
+      .drop("stateHoliday").drop("schoolHoliday").drop("storeType")
+      .drop("assortment").drop("promoInterval").drop("sales")
+      .drop("promo2SinceWeek").drop("customers").drop("promoInterval")
+      .drop("competitionOpenSinceYear").drop("competitionOpenSinceMonth")
+      .drop("promo2SinceYear").drop("competitionDistance").drop("date")
   }
 
   private def crossValidation(
       xgboostParam: Map[String, Any],
-      trainingData: Dataset[_]): TrainValidationSplitModel = {
+      trainingData: DataFrame): TrainValidationSplitModel = {
     val xgbEstimator = new XGBoostEstimator(xgboostParam).setFeaturesCol("features").
       setLabelCol("logSales")
     val paramGrid = new ParamGridBuilder()
@@ -175,8 +177,11 @@ object SparkModelTuningTool {
   }
 
   def main(args: Array[String]): Unit = {
-    val sparkSession = SparkSession.builder().appName("rosseman").getOrCreate()
-    import sparkSession.implicits._
+    val sparkConf = new SparkConf().setAppName("rosseman")
+    val sc = new SparkContext(sparkConf)
+    val sqlContext = new SQLContext(sc)
+
+    import sqlContext.implicits._
 
     // parse training file to data frame
     val trainingPath = args(0)

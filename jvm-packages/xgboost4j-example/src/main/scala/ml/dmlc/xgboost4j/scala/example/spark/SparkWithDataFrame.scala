@@ -18,8 +18,8 @@ package ml.dmlc.xgboost4j.scala.example.spark
 
 import ml.dmlc.xgboost4j.scala.Booster
 import ml.dmlc.xgboost4j.scala.spark.XGBoost
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.SparkConf
+import org.apache.spark.sql.SQLContext
+import org.apache.spark.{SparkConf, SparkContext}
 
 object SparkWithDataFrame {
   def main(args: Array[String]): Unit = {
@@ -32,15 +32,14 @@ object SparkWithDataFrame {
     val sparkConf = new SparkConf().setAppName("XGBoost-spark-example")
       .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     sparkConf.registerKryoClasses(Array(classOf[Booster]))
-    // val sqlContext = new SQLContext(new SparkContext(sparkConf))
-    val sparkSession = SparkSession.builder().config(sparkConf).getOrCreate()
+    val sqlContext = new SQLContext(new SparkContext(sparkConf))
     // create training and testing dataframes
     val numRound = args(0).toInt
     val inputTrainPath = args(2)
     val inputTestPath = args(3)
     // build dataset
-    val trainDF = sparkSession.sqlContext.read.format("libsvm").load(inputTrainPath)
-    val testDF = sparkSession.sqlContext.read.format("libsvm").load(inputTestPath)
+    val trainDF = sqlContext.read.format("libsvm").load(inputTrainPath)
+    val testDF = sqlContext.read.format("libsvm").load(inputTestPath)
     // start training
     val paramMap = List(
       "eta" -> 0.1f,

@@ -25,8 +25,8 @@ import ml.dmlc.xgboost4j.scala.{Booster, DMatrix, EvalTrait}
 import org.apache.hadoop.fs.{FSDataOutputStream, Path}
 
 import org.apache.spark.ml.PredictionModel
-import org.apache.spark.ml.feature.{LabeledPoint => MLLabeledPoint}
-import org.apache.spark.ml.linalg.{DenseVector => MLDenseVector, Vector => MLVector}
+import org.apache.spark.mllib.regression.{LabeledPoint => MLLabeledPoint}
+import org.apache.spark.mllib.linalg.{DenseVector => MLDenseVector, Vector => MLVector}
 import org.apache.spark.ml.param.{BooleanParam, ParamMap, Params}
 import org.apache.spark.ml.util._
 import org.apache.spark.rdd.RDD
@@ -238,18 +238,18 @@ abstract class XGBoostModel(protected var _booster: Booster)
    *
    * @return the original dataframe with an additional column containing prediction results
    */
-  def transformLeaf(testSet: Dataset[_]): DataFrame = {
+  def transformLeaf(testSet: DataFrame): DataFrame = {
     val predictRDD = produceRowRDD(testSet, predLeaf = true)
     setPredictionCol("predLeaf")
     transformSchema(testSet.schema, logging = true)
-    testSet.sparkSession.createDataFrame(predictRDD, testSet.schema.add($(predictionCol),
+    testSet.sqlContext.createDataFrame(predictRDD, testSet.schema.add($(predictionCol),
       ArrayType(FloatType, containsNull = false)))
   }
 
-  protected def produceRowRDD(testSet: Dataset[_], outputMargin: Boolean = false,
+  protected def produceRowRDD(testSet: DataFrame, outputMargin: Boolean = false,
       predLeaf: Boolean = false): RDD[Row] = {
-    val broadcastBooster = testSet.sparkSession.sparkContext.broadcast(_booster)
-    val appName = testSet.sparkSession.sparkContext.appName
+    val broadcastBooster = testSet.sqlContext.sparkContext.broadcast(_booster)
+    val appName = testSet.sqlContext.sparkContext.appName
     testSet.rdd.mapPartitions {
       rowIterator =>
         if (rowIterator.hasNext) {
@@ -296,7 +296,7 @@ abstract class XGBoostModel(protected var _booster: Booster)
    *
    * @return the original dataframe with an additional column containing prediction results
    */
-  override def transform(testSet: Dataset[_]): DataFrame = {
+  override def transform(testSet: DataFrame): DataFrame = {
     transformImpl(testSet)
   }
 
@@ -367,7 +367,7 @@ object XGBoostModel extends MLReadable[XGBoostModel] {
   private[XGBoostModel] class XGBoostModelModelWriter(instance: XGBoostModel) extends MLWriter {
     override protected def saveImpl(path: String): Unit = {
       implicit val format = DefaultFormats
-      implicit val sc = super.sparkSession.sparkContext
+      implicit val sc = super.sqlContext.sparkContext
       DefaultXGBoostParamsWriter.saveMetadata(instance, path, sc)
       val dataPath = new Path(path, "data").toString
       instance.saveModelAsHadoopFile(dataPath)
@@ -377,7 +377,7 @@ object XGBoostModel extends MLReadable[XGBoostModel] {
   private class XGBoostModelModelReader extends MLReader[XGBoostModel] {
 
     override def load(path: String): XGBoostModel = {
-      implicit val sc = super.sparkSession.sparkContext
+      implicit val sc = super.sqlContext.sparkContext
       val dataPath = new Path(path, "data").toString
       // not used / all data resides in platform independent xgboost model file
       // val metadata = DefaultXGBoostParamsReader.loadMetadata(path, sc, className)

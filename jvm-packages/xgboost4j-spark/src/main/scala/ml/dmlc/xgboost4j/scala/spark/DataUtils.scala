@@ -18,8 +18,8 @@ package ml.dmlc.xgboost4j.scala.spark
 
 import ml.dmlc.xgboost4j.{LabeledPoint => XGBLabeledPoint}
 
-import org.apache.spark.ml.feature.{LabeledPoint => MLLabeledPoint}
-import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector, Vectors}
+import org.apache.spark.mllib.regression.{LabeledPoint => MLLabeledPoint}
+import org.apache.spark.mllib.linalg.{DenseVector, SparseVector, Vector, Vectors}
 
 object DataUtils extends Serializable {
   private[spark] implicit class XGBLabeledPointFeatures(
@@ -31,7 +31,7 @@ object DataUtils extends Serializable {
     }
 
     /**
-     * Returns feature of the point as [[org.apache.spark.ml.linalg.Vector]].
+     * Returns feature of the point as [[org.apache.spark.mllib.linalg.Vector]].
      *
      * If the point is sparse, the dimensionality of the resulting sparse
      * vector would be [[Int.MaxValue]]. This is the only safe value, since

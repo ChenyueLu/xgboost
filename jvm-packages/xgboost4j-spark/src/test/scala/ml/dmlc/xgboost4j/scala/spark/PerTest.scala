@@ -19,15 +19,15 @@ package ml.dmlc.xgboost4j.scala.spark
 import java.io.File
 
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.SQLContext
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 trait PerTest extends BeforeAndAfterEach { self: FunSuite =>
   protected val numWorkers: Int = Runtime.getRuntime.availableProcessors()
 
-  @transient private var currentSession: SparkSession = _
+  @transient private var currentSession: SQLContext = _
 
-  def ss: SparkSession = getOrCreateSession
+  def ss: SQLContext = getOrCreateSession
   implicit def sc: SparkContext = ss.sparkContext
 
   protected def sparkSessionBuilder: SparkSession.Builder = SparkSession.builder()
