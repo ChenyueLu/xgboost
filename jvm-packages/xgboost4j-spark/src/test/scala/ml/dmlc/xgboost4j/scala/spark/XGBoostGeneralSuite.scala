@@ -25,8 +25,8 @@ import ml.dmlc.xgboost4j.scala.DMatrix
 import ml.dmlc.xgboost4j.scala.rabit.RabitTracker
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.SparkContext
-import org.apache.spark.ml.feature.{LabeledPoint => MLLabeledPoint}
-import org.apache.spark.ml.linalg.{DenseVector, Vectors, Vector => SparkVector}
+import org.apache.spark.mllib.regression.{LabeledPoint => MLLabeledPoint}
+import org.apache.spark.mllib.linalg.{DenseVector, Vectors, Vector => SparkVector}
 import org.apache.spark.rdd.RDD
 import org.scalatest.FunSuite
 

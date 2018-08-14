@@ -19,7 +19,7 @@ package ml.dmlc.xgboost4j.scala.spark
 import java.nio.file.Files
 
 import ml.dmlc.xgboost4j.scala.DMatrix
-import org.apache.spark.ml.linalg.Vector
+import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.rdd.RDD
 import org.scalatest.FunSuite

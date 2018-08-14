@@ -23,7 +23,7 @@ import org.apache.spark.ml.param.{BooleanParam, DoubleArrayParam, Param, ParamMa
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.DataFrame
 
 /**
  * class of the XGBoost model used for classification task
@@ -74,10 +74,10 @@ class XGBoostClassificationModel private[spark](
 
   // generate dataframe containing raw prediction column which is typed as Vector
   private def predictRaw(
-      testSet: Dataset[_],
+      testSet: DataFrame,
       temporalColName: Option[String] = None,
       forceTransformedScore: Option[Boolean] = None): DataFrame = {
-    val predictRDD = produceRowRDD(testSet.toDF, forceTransformedScore.getOrElse($(outputMargin)))
+    val predictRDD = produceRowRDD(testSet, forceTransformedScore.getOrElse($(outputMargin)))
     val colName = temporalColName.getOrElse($(rawPredictionCol))
     val tempColName = colName + "_arraytype"
     val dsWithArrayTypedRawPredCol = testSet.sqlContext.createDataFrame(predictRDD, schema = {
@@ -96,11 +96,11 @@ class XGBoostClassificationModel private[spark](
       drop(tempColName)
   }
 
-  private def fromFeatureToPrediction(testSet: Dataset[_]): DataFrame = {
+  private def fromFeatureToPrediction(testSet: DataFrame): DataFrame = {
     val rawPredictionDF = predictRaw(testSet, Some("rawPredictionCol"))
     val predictionUDF = udf(raw2prediction _).apply(col("rawPredictionCol"))
     val tempDF = rawPredictionDF.withColumn($(predictionCol), predictionUDF)
-    val allColumnNames = testSet.toDF.columns ++ Seq($(predictionCol))
+    val allColumnNames = testSet.columns ++ Seq($(predictionCol))
     tempDF.select(allColumnNames(0), allColumnNames.tail: _*)
   }
 
@@ -129,7 +129,7 @@ class XGBoostClassificationModel private[spark](
     }
   }
 
-  override protected def transformImpl(testSet: Dataset[_]): DataFrame = {
+  override protected def transformImpl(testSet: DataFrame): DataFrame = {
     transformSchema(testSet.schema, logging = true)
     if (isDefined(thresholds)) {
       require($(thresholds).length == numClasses, this.getClass.getSimpleName +
@@ -139,7 +139,7 @@ class XGBoostClassificationModel private[spark](
     if ($(outputMargin)) {
       setRawPredictionCol("margin")
     }
-    var outputData = testSet.toDF()
+    var outputData = testSet
     var numColsOutput = 0
     if ($(rawPredictionCol).nonEmpty) {
       outputData = predictRaw(testSet)
@@ -163,7 +163,7 @@ class XGBoostClassificationModel private[spark](
       this.logWarning(s"$uid: XGBoostClassificationModel.transform() was called as NOOP" +
         " since no output columns were set.")
     }
-    outputData.toDF()
+    outputData
   }
 
   private[spark] var numOfClasses = 2

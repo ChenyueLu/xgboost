@@ -24,8 +24,8 @@ import org.apache.spark.mllib.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.ml.param._
 import org.apache.spark.ml.util._
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.FloatType
-import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import org.apache.spark.sql.types.{DoubleType, FloatType}
+import org.apache.spark.sql.{DataFrame, Row}
 import org.json4s.DefaultFormats
 
 /**
@@ -108,7 +108,7 @@ class XGBoostEstimator private[spark](
   private def ensureColumns(trainingSet: DataFrame): DataFrame = {
     var newTrainingSet = trainingSet
     if (!trainingSet.columns.contains($(baseMarginCol))) {
-      newTrainingSet = newTrainingSet.withColumn($(baseMarginCol), lit(Float.NaN))
+      newTrainingSet = newTrainingSet.withColumn($(baseMarginCol), lit(Double.NaN))
     }
     if (!trainingSet.columns.contains($(weightCol))) {
       newTrainingSet = newTrainingSet.withColumn($(weightCol), lit(1.0))
@@ -120,19 +120,21 @@ class XGBoostEstimator private[spark](
    * produce a XGBoostModel by fitting the given dataset
    */
   override def train(trainingSet: DataFrame): XGBoostModel = {
-    val instances = ensureColumns(trainingSet).select(
+    val newTraningSet = trainingSet
+      .withColumn($(labelCol), trainingSet($(labelCol)) cast DoubleType)
+    val instances = ensureColumns(newTraningSet).select(
       col($(featuresCol)),
-      col($(labelCol)).cast(FloatType),
+      col($(labelCol)).cast(DoubleType),
       col($(baseMarginCol)).cast(FloatType),
       col($(weightCol)).cast(FloatType)
-    ).rdd.map { case Row(features: Vector, label: Float, baseMargin: Float, weight: Float) =>
+    ).rdd.map { case Row(features: Vector, label: Double, baseMargin: Float, weight: Float) =>
       val (indices, values) = features match {
         case v: SparseVector => (v.indices, v.values.map(_.toFloat))
         case v: DenseVector => (null, v.values.map(_.toFloat))
       }
       XGBLabeledPoint(label.toFloat, indices, values, baseMargin = baseMargin, weight = weight)
     }
-    transformSchema(trainingSet.schema, logging = true)
+    transformSchema(newTraningSet.schema, logging = true)
     val derivedXGBoosterParamMap = fromParamsToXGBParamMap
     val trainedModel = XGBoost.trainDistributed(instances, derivedXGBoosterParamMap,
       $(round), $(nWorkers), $(customObj), $(customEval), $(useExternalMemory),

@@ -18,11 +18,10 @@ package ml.dmlc.xgboost4j.scala.spark
 
 import ml.dmlc.xgboost4j.scala.{DMatrix, XGBoost => ScalaXGBoost}
 import ml.dmlc.xgboost4j.{LabeledPoint => XGBLabeledPoint}
-import org.apache.spark.ml.linalg.DenseVector
+import org.apache.spark.mllib.linalg.DenseVector
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.DataTypes
 import org.scalatest.FunSuite
 import org.scalatest.prop.TableDrivenPropertyChecks
 
@@ -50,6 +49,7 @@ class XGBoostDFSuite extends FunSuite with PerTest with TableDrivenPropertyCheck
     val testDMatrix = new DMatrix(testItr)
     val xgboostModel = ScalaXGBoost.train(trainDMatrix, paramMap, round)
     val predResultFromSeq = xgboostModel.predict(testDMatrix)
+    print(predResultFromSeq)
     val trainingDF = buildDataFrame(Classification.train)
     val xgBoostModelWithDF = XGBoost.trainWithDataFrame(trainingDF, paramMap,
       round = round, nWorkers = numWorkers)
@@ -97,12 +97,15 @@ class XGBoostDFSuite extends FunSuite with PerTest with TableDrivenPropertyCheck
     val paramMap = Map("eta" -> "1", "max_depth" -> "6", "silent" -> "1",
       "objective" -> "binary:logistic")
     val trainingDF = buildDataFrame(Classification.train)
+    trainingDF.show()
     val xgBoostModelWithDF = XGBoost.trainWithDataFrame(trainingDF, paramMap,
       round = 5, nWorkers = numWorkers, useExternalMemory = true)
     xgBoostModelWithDF.asInstanceOf[XGBoostClassificationModel].setRawPredictionCol(
       "raw_prediction").setPredictionCol("final_prediction")
     val testDF = buildDataFrame(Classification.test)
+    testDF.show()
     var predictionDF = xgBoostModelWithDF.setExternalMemory(true).transform(testDF)
+    predictionDF.show()
     assert(predictionDF.columns.contains("id"))
     assert(predictionDF.columns.contains("features"))
     assert(predictionDF.columns.contains("label"))
@@ -168,12 +171,12 @@ class XGBoostDFSuite extends FunSuite with PerTest with TableDrivenPropertyCheck
     val paramMap = Map("eta" -> "0.1", "max_depth" -> "6", "silent" -> "1",
       "objective" -> "multi:softmax", "num_class" -> "6")
     val trainingDF = buildDataFrame(MultiClassification.train)
-    XGBoost.trainWithDataFrame(trainingDF.toDF(), paramMap, round = 5, nWorkers = numWorkers)
+    XGBoost.trainWithDataFrame(trainingDF, paramMap, round = 5, nWorkers = numWorkers)
   }
 
   test("test DF use nested groupData") {
     val trainingDF = buildDataFrame(Ranking.train0, 1)
-        .union(buildDataFrame(Ranking.train1, 1))
+        .unionAll(buildDataFrame(Ranking.train1, 1))
     val trainGroupData: Seq[Seq[Int]] = Seq(Ranking.trainGroup0, Ranking.trainGroup1)
     val paramMap = Map("eta" -> "1", "max_depth" -> "6", "silent" -> "1",
       "objective" -> "rank:pairwise", "groupData" -> trainGroupData)
@@ -205,7 +208,7 @@ class XGBoostDFSuite extends FunSuite with PerTest with TableDrivenPropertyCheck
       "objective" -> "binary:logistic", "baseMarginCol" -> "margin",
       "testTrainSplit" -> 0.5)
 
-    def trainPredict(df: Dataset[_]): Array[Float] = {
+    def trainPredict(df: DataFrame): Array[Float] = {
       XGBoost.trainWithDataFrame(df, paramMap, round = 1, nWorkers = numWorkers)
           .predict(testRDD)
           .map { case Array(p) => p }
@@ -222,7 +225,7 @@ class XGBoostDFSuite extends FunSuite with PerTest with TableDrivenPropertyCheck
     val paramMap = Map("eta" -> "1", "max_depth" -> "6", "silent" -> "1",
       "objective" -> "reg:linear", "weightCol" -> "weight")
 
-    val getWeightFromId = udf({id: Int => if (id == 0) 1.0f else 0.001f}, DataTypes.FloatType)
+    val getWeightFromId = udf({id: Int => if (id == 0) 1.0f else 0.001f})
     val trainingDF = buildDataFrame(Regression.train)
       .withColumn("weight", getWeightFromId(col("id")))
 

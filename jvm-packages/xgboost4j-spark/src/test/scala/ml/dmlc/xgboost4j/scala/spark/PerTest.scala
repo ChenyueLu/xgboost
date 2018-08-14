@@ -18,7 +18,7 @@ package ml.dmlc.xgboost4j.scala.spark
 
 import java.io.File
 
-import org.apache.spark.SparkContext
+import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.sql.SQLContext
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
@@ -30,18 +30,18 @@ trait PerTest extends BeforeAndAfterEach { self: FunSuite =>
   def ss: SQLContext = getOrCreateSession
   implicit def sc: SparkContext = ss.sparkContext
 
-  protected def sparkSessionBuilder: SparkSession.Builder = SparkSession.builder()
-      .master("local[*]")
-      .appName("XGBoostSuite")
-      .config("spark.ui.enabled", false)
-      .config("spark.driver.memory", "512m")
+  protected def sparkSessionConf: SparkConf = new SparkConf()
+      .setMaster("local[*]")
+      .setAppName("XGBoostSuite")
+      .set("spark.ui.enabled", "false")
+      .set("spark.driver.memory", "512m")
 
   override def beforeEach(): Unit = getOrCreateSession
 
   override def afterEach() {
     synchronized {
       if (currentSession != null) {
-        currentSession.stop()
+        currentSession.sparkContext.stop()
         cleanExternalCache(currentSession.sparkContext.appName)
         currentSession = null
       }
@@ -50,7 +50,7 @@ trait PerTest extends BeforeAndAfterEach { self: FunSuite =>
 
   private def getOrCreateSession = synchronized {
     if (currentSession == null) {
-      currentSession = sparkSessionBuilder.getOrCreate()
+      currentSession = new SQLContext(new SparkContext(sparkSessionConf))
       currentSession.sparkContext.setLogLevel("ERROR")
     }
     currentSession

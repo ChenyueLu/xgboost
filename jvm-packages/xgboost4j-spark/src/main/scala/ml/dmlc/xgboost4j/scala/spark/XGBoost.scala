@@ -29,7 +29,7 @@ import org.apache.commons.io.FileUtils
 import org.apache.commons.logging.LogFactory
 import org.apache.hadoop.fs.{FSDataInputStream, Path}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.mllib.regression.{LabeledPoint => MLLabeledPoint}
 import org.apache.spark.{SparkContext, TaskContext}
 

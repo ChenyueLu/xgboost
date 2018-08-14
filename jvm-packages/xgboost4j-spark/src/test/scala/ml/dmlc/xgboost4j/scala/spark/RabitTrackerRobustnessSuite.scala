@@ -16,10 +16,9 @@
 
 package ml.dmlc.xgboost4j.scala.spark
 
-import ml.dmlc.xgboost4j.java.{IRabitTracker, Rabit, RabitTracker => PyRabitTracker}
+import ml.dmlc.xgboost4j.java.{Rabit, RabitTracker => PyRabitTracker}
 import ml.dmlc.xgboost4j.scala.rabit.{RabitTracker => ScalaRabitTracker}
 import ml.dmlc.xgboost4j.java.IRabitTracker.TrackerStatus
-import org.apache.spark.{SparkConf, SparkContext}
 import org.scalatest.FunSuite
 
 

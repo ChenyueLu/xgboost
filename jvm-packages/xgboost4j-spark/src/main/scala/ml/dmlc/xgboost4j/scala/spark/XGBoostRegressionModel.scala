@@ -37,9 +37,9 @@ class XGBoostRegressionModel private[spark](override val uid: String, booster: B
   // only called in copy()
   def this(uid: String) = this(uid, null)
 
-  override protected def transformImpl(testSet: Dataset[_]): DataFrame = {
+  override protected def transformImpl(testSet: DataFrame): DataFrame = {
     transformSchema(testSet.schema, logging = true)
-    val predictRDD = produceRowRDD(testSet.toDF)
+    val predictRDD = produceRowRDD(testSet)
     val tempPredColName = $(predictionCol) + "_temp"
     val transformerForArrayTypedPredCol =
       udf((regressionResults: mutable.WrappedArray[Float]) => regressionResults(0))

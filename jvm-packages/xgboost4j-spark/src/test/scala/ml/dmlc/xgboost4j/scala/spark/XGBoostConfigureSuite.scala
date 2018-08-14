@@ -17,16 +17,13 @@
 package ml.dmlc.xgboost4j.scala.spark
 
 import ml.dmlc.xgboost4j.scala.{Booster, DMatrix}
-
-import org.apache.spark.rdd.RDD
-import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.SparkConf
 import org.scalatest.FunSuite
 
 class XGBoostConfigureSuite extends FunSuite with PerTest {
-  override def sparkSessionBuilder: SparkSession.Builder = super.sparkSessionBuilder
-      .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-      .config("spark.kryo.classesToRegister", classOf[Booster].getName)
+  override def sparkSessionConf: SparkConf = super.sparkSessionConf
+      .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+      .set("spark.kryo.classesToRegister", classOf[Booster].getName)
 
   test("nthread configuration must be no larger than spark.task.cpus") {
     val paramMap = Map("eta" -> "1", "max_depth" -> "2", "silent" -> "1",

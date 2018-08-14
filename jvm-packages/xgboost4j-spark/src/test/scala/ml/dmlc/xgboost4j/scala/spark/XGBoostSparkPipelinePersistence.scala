@@ -19,11 +19,11 @@ package ml.dmlc.xgboost4j.scala.spark
 import java.io.{File, FileNotFoundException}
 
 import scala.util.Random
-
-import org.apache.spark.SparkConf
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.ml.feature._
 import org.apache.spark.ml.{Pipeline, PipelineModel}
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.types.DoubleType
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 class XGBoostSparkPipelinePersistence extends FunSuite with PerTest
@@ -62,8 +62,7 @@ class XGBoostSparkPipelinePersistence extends FunSuite with PerTest
   }
 
   test("test persistence of a complete pipeline") {
-    val conf = new SparkConf().setAppName("foo").setMaster("local[*]")
-    val spark = SparkSession.builder().config(conf).getOrCreate()
+    val spark = ss
     val paramMap = Map("eta" -> "0.1", "max_depth" -> "6", "silent" -> "1",
       "objective" -> "multi:softmax", "num_class" -> "6")
     val r = new Random(0)
@@ -80,12 +79,12 @@ class XGBoostSparkPipelinePersistence extends FunSuite with PerTest
   }
 
   test("test persistence of XGBoostModel") {
-    val conf = new SparkConf().setAppName("foo").setMaster("local[*]")
-    val spark = SparkSession.builder().config(conf).getOrCreate()
+    val spark = ss
     val r = new Random(0)
     // maybe move to shared context, but requires session to import implicits
-    val df = spark.createDataFrame(Seq.fill(10000)(r.nextInt(2)).map(i => (i, i))).
+    val raw = spark.createDataFrame(Seq.fill(10000)(r.nextInt(2)).map(i => (i, i))).
       toDF("feature", "label")
+    val df = raw.withColumn("label", raw("label") cast DoubleType)
     val vectorAssembler = new VectorAssembler()
       .setInputCols(df.columns
         .filter(!_.contains("label")))

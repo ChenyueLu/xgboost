@@ -33,6 +33,8 @@ class CheckpointManagerSuite extends FunSuite  with BeforeAndAfterAll {
     sc = new SparkContext(conf)
   }
 
+  override def afterAll(): Unit = {sc.stop()}
+
   private lazy val (model4, model8) = {
     import DataUtils._
     val trainingRDD = sc.parallelize(Classification.train).map(_.asML).cache()
@@ -77,4 +79,5 @@ class CheckpointManagerSuite extends FunSuite  with BeforeAndAfterAll {
     manager.updateCheckpoint(model4)
     assertResult(Seq(4, 6, 7))(manager.getCheckpointRounds(2, 7))
   }
+
 }

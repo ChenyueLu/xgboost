@@ -231,7 +231,7 @@ abstract class XGBoostModel(protected var _booster: Booster)
     }
   }
 
-  protected def transformImpl(testSet: Dataset[_]): DataFrame
+  protected def transformImpl(testSet: DataFrame): DataFrame
 
   /**
    * append leaf index of each row as an additional column in the original dataset
