@@ -167,16 +167,7 @@ private[scala] class RabitTrackerHandler(numWorkers: Int)
       log.info(msg.trim)
 
     case WorkerShutdown(rank, _, _) =>
-      assert(rank >= 0, "Invalid rank.")
-      assert(!shutdownWorkers.contains(rank))
-      shutdownWorkers.add(rank)
 
-      log.info(s"Received shutdown signal from $rank")
-
-      if (shutdownWorkers.size == numWorkers) {
-        promisedShutdownWorkers.success(shutdownWorkers.size)
-        context.stop(self)
-      }
 
     case WorkerRecover(prevRank, worldSize, jobId) =>
       assert(prevRank >= 0)
